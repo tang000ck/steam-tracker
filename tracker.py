@@ -38,9 +38,8 @@ def save(path, obj):
     path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
-def get_json(url, params, tries=4):
+def get_json(url, params, tries=4, wait=15):
     """带退避重试的 GET；Steam 限流（429）时指数等待。"""
-    wait = 20
     for _ in range(tries):
         try:
             r = session.get(url, params=params, timeout=30)
@@ -66,7 +65,7 @@ def fetch_inventory(steamid, appid):
     params = {"l": "schinese", "count": 2000}
     assets, descs = [], {}
     while True:
-        d = get_json(url, params)
+        d = get_json(url, params, tries=2, wait=10)
         if not d or not d.get("success"):
             return None
         assets += d.get("assets", [])
@@ -182,14 +181,20 @@ def main():
     state = load(DATA / "state.json", {"alerts": {}, "daily": ""})
     prev = {it["key"]: it for it in latest.get("items", [])}
 
+    # 库存接口对云服务器 IP 限流很严，且库存很少变化：每隔几小时才刷新一次，失败就沿用上次的清单
+    refresh = ts - state.get("inventory_at", 0) >= cfg.get("inventory_hours", 6) * 3600
     items = []
     for app in cfg["apps"]:
-        inv = fetch_inventory(cfg["steamid"], app)
+        inv = fetch_inventory(cfg["steamid"], app) if refresh else None
         if inv is None:
-            print(f"[{app}] 库存读取失败，沿用上次结果")
             inv = [it for it in latest.get("items", []) if it["app"] == app]
+            print(f"[{app}] {'库存读取失败，' if refresh else ''}沿用上次清单")
+        else:
+            state[f"inventory_ok_{app}"] = ts
         print(f"[{app}] {len(inv)} 种饰品")
         items += inv
+    if refresh:
+        state["inventory_at"] = ts
 
     fresh = 0
     for i, it in enumerate(items):
