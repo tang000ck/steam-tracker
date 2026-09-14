@@ -1,0 +1,9 @@
+{
+  "steamid": "76561199188231289",
+  "apps": [730, 570],
+  "currency": 23,
+  "alert_pct": 10,
+  "alert_cooldown_hours": 12,
+  "daily_hour": 21,
+  "request_interval": 4
+}

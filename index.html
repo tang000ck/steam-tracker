@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="饰品行情">
+<meta name="theme-color" content="#0e1014">
+<title>饰品行情</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --line:#e6e8ec; --text:#14161a; --sub:#6b7280; --faint:#9aa1ab;
+  --up:#e5484d; --down:#16a34a; --flat:#8a919c; --accent:#3b82f6; --chip:#eceef2;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e1014; --card:#171a20; --line:#262a33; --text:#e9ecf1; --sub:#9aa3b0; --faint:#6b7380; --chip:#20242c;}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font:15px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  padding:calc(env(safe-area-inset-top) + 12px) max(16px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 24px) max(16px,env(safe-area-inset-left));
+  max-width:640px;margin:0 auto}
+.num{font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--flat)}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px}
+.hero .label{color:var(--sub);font-size:13px;display:flex;justify-content:space-between}
+.hero .total{font-size:34px;font-weight:700;letter-spacing:-.5px;margin:4px 0 2px}
+.hero .meta{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.hero .meta span b{font-weight:600}
+.tabs{display:flex;gap:6px;margin:12px 0 4px}
+.tabs button{flex:1;border:0;background:var(--chip);color:var(--sub);border-radius:8px;padding:6px 0;font:inherit;font-size:13px}
+.tabs button.on{background:var(--text);color:var(--card)}
+.chart{position:relative;height:170px;margin-top:6px;touch-action:pan-y}
+.chart svg{display:block;width:100%;height:100%;overflow:visible}
+.chart .tip{position:absolute;left:0;top:-2px;font-size:12px;color:var(--sub);pointer-events:none}
+.chart .empty{height:100%;display:grid;place-items:center;color:var(--faint);font-size:13px;text-align:center}
+.bar{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 8px;gap:8px;flex-wrap:wrap}
+.bar h2{font-size:17px;margin:0}
+.chips{display:flex;gap:6px}
+.chips button{border:0;background:var(--chip);color:var(--sub);border-radius:999px;padding:5px 11px;font:inherit;font-size:13px}
+.chips button.on{background:var(--accent);color:#fff}
+.list{background:var(--card);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:active{background:var(--chip)}
+.ic{width:56px;height:42px;flex:none;border-radius:8px;background:var(--chip);object-fit:contain}
+.mid{flex:1;min-width:0}
+.name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:12px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{display:inline-block;font-size:11px;padding:0 5px;border-radius:4px;background:var(--chip);color:var(--sub);margin-right:4px}
+.right{text-align:right;flex:none}
+.right .v{font-size:15px;font-weight:600}
+.right .c{font-size:12px;margin-top:2px}
+.foot{color:var(--faint);font-size:12px;text-align:center;margin-top:16px}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;background:var(--bg);border-radius:20px 20px 0 0;
+  padding:10px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease}
+.open .sheet-bg{opacity:1;pointer-events:auto} .open .sheet{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.dhead{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.dhead img{width:96px;height:72px;border-radius:12px;background:var(--card);object-fit:contain}
+.dhead .name{white-space:normal;font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat{background:var(--card);border-radius:12px;padding:10px 12px}
+.stat .k{font-size:12px;color:var(--sub)} .stat .val{font-size:17px;font-weight:600;margin-top:2px}
+.buy{display:flex;gap:8px;align-items:center;margin-top:10px}
+.buy input{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+.btn{display:block;text-align:center;border:0;border-radius:12px;padding:11px;font:inherit;font-size:15px;text-decoration:none;background:var(--card);color:var(--accent);margin-top:10px;width:100%}
+</style>
+</head>
+<body>
+<div class="card hero">
+  <div class="label"><span>库存总价值</span><span id="updated"></span></div>
+  <div class="total num" id="total">加载中…</div>
+  <div class="meta num" id="meta"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="chart" id="totalChart"></div>
+</div>
+
+<div class="bar">
+  <h2>我的饰品</h2>
+  <div class="chips" id="filter"></div>
+  <div class="chips" id="sort"></div>
+</div>
+<div class="list" id="list"></div>
+<div class="foot" id="foot"></div>
+
+<div id="detail">
+  <div class="sheet-bg" id="sheetBg"></div>
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const APPS = {730: 'CS2', 570: 'Dota 2'};
+const RANGES = [['24H', 864e2], ['7D', 6048e2], ['30D', 2592e3], ['全部', Infinity]];
+const ICON = h => h ? `https://community.cloudflare.steamstatic.com/economy/image/${h}/192fx144f` : '';
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
+};
+const money = v => v == null ? '—' : '¥' + v.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const pct = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+const dir = v => v == null || Math.abs(v) < 0.005 ? 'flat' : v > 0 ? 'up' : 'down';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const two = n => String(n).padStart(2, '0');
+const when = ts => { const d = new Date(ts * 1000); return `${d.getMonth() + 1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}`; };
+const ago = ts => {
+  const s = Date.now() / 1000 - ts;
+  return s < 60 ? '刚刚更新' : s < 3600 ? `${Math.floor(s / 60)} 分钟前更新` : s < 86400 ? `${Math.floor(s / 3600)} 小时前更新` : `${when(ts)} 更新`;
+};
+// Steam 的名称颜色有些是浅灰（普通品质），在浅色背景上看不清，只保留有辨识度的颜色
+const nameStyle = hex => {
+  if (!/^[0-9a-f]{6}$/i.test(hex || '')) return '';
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
+  return Math.max(r, g, b) - Math.min(r, g, b) < 40 ? '' : ` style="color:#${hex}"`;
+};
+const buyOf = key => { const v = parseFloat(store.get('buy:' + key)); return isFinite(v) && v > 0 ? v : null; };
+
+let latest = null, history = {total: [], items: {}};
+let state = {range: store.get('range') || '7D', filter: 'all', sort: store.get('sort') || 'value', open: null, dRange: '7D'};
+
+function tabs(el, current, onPick) {
+  el.innerHTML = RANGES.map(([k]) => `<button class="${k === current ? 'on' : ''}" data-k="${k}">${k}</button>`).join('');
+  el.onclick = e => { const k = e.target.dataset.k; if (k) onPick(k); };
+}
+
+function chart(el, series, rangeKey) {
+  const span = RANGES.find(r => r[0] === rangeKey)[1];
+  const end = series.length ? series[series.length - 1][0] : 0;
+  const pts = series.filter(p => end - p[0] <= span);
+  if (pts.length < 2) {
+    el.innerHTML = '<div class="empty">数据积累中<br>云端每小时记录一次价格</div>';
+    return;
+  }
+  const W = el.clientWidth || 340, H = el.clientHeight || 170, pad = {l: 2, r: 2, t: 22, b: 20};
+  const x0 = pts[0][0], x1 = pts[pts.length - 1][0];
+  let lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]));
+  if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+  const m = (hi - lo) * 0.08; lo -= m; hi += m;
+  const X = t => pad.l + (t - x0) / (x1 - x0 || 1) * (W - pad.l - pad.r);
+  const Y = v => pad.t + (1 - (v - lo) / (hi - lo)) * (H - pad.t - pad.b);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join('');
+  const first = pts[0][1], last = pts[pts.length - 1][1];
+  const c = `var(--${dir(last - first)})`;
+  const base = H - pad.b;
+  el.innerHTML = `
+    <div class="tip num"></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <path d="${line}L${X(x1)},${base}L${X(x0)},${base}Z" fill="${c}" opacity=".10"/>
+      <path d="${line}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="${pad.l}" y="${H - 4}" font-size="11" fill="var(--faint)">${when(x0)}</text>
+      <text x="${W - pad.r}" y="${H - 4}" font-size="11" fill="var(--faint)" text-anchor="end">${when(x1)}</text>
+      <g class="cross" style="display:none">
+        <line y1="${pad.t}" y2="${base}" stroke="var(--faint)" stroke-dasharray="3 3"/>
+        <circle r="4" fill="${c}" stroke="var(--card)" stroke-width="2"/>
+      </g>
+    </svg>`;
+  const tip = el.querySelector('.tip'), cross = el.querySelector('.cross');
+  const idle = () => {
+    const d = (last - first) / first * 100;
+    tip.innerHTML = `区间 <span class="${dir(d)}">${pct(d)}</span> · 高 ${money(Math.max(...pts.map(p => p[1])))} · 低 ${money(Math.min(...pts.map(p => p[1])))}`;
+    cross.style.display = 'none';
+  };
+  const move = e => {
+    const r = el.getBoundingClientRect();
+    const t = x0 + (e.clientX - r.left - pad.l) / (r.width - pad.l - pad.r) * (x1 - x0);
+    let best = pts[0];
+    for (const p of pts) if (Math.abs(p[0] - t) < Math.abs(best[0] - t)) best = p;
+    const px = X(best[0]), py = Y(best[1]);
+    cross.style.display = '';
+    cross.querySelector('line').setAttribute('x1', px); cross.querySelector('line').setAttribute('x2', px);
+    cross.querySelector('circle').setAttribute('cx', px); cross.querySelector('circle').setAttribute('cy', py);
+    tip.textContent = `${money(best[1])} · ${when(best[0])}`;
+  };
+  el.onpointerdown = el.onpointermove = move;
+  el.onpointerleave = el.onpointerup = el.onpointercancel = idle;
+  idle();
+}
+
+function renderHero() {
+  const items = latest.items;
+  $('total').textContent = money(latest.total);
+  $('updated').textContent = ago(latest.updated_at);
+  const priced = items.filter(it => buyOf(it.key) && it.price != null);
+  let html = `<span>24h <b class="${dir(latest.total_change)}">${pct(latest.total_change)}</b></span>
+              <span>共 <b>${items.reduce((s, it) => s + it.count, 0)}</b> 件</span>`;
+  if (priced.length) {
+    const cost = priced.reduce((s, it) => s + buyOf(it.key) * it.count, 0);
+    const val = priced.reduce((s, it) => s + it.price * it.count, 0);
+    const d = val - cost;
+    html += `<span>浮动盈亏 <b class="${dir(d)}">${d >= 0 ? '+' : '-'}${money(Math.abs(d))}（${pct(d / cost * 100)}）</b></span>`;
+  }
+  $('meta').innerHTML = html;
+  tabs($('tabs'), state.range, k => { state.range = k; store.set('range', k); renderHero(); });
+  chart($('totalChart'), history.total || [], state.range);
+}
+
+function renderList() {
+  const apps = [...new Set(latest.items.map(it => it.app))];
+  $('filter').innerHTML = [['all', '全部'], ...apps.map(a => [String(a), APPS[a] || a])]
+    .map(([k, v]) => `<button class="${state.filter === k ? 'on' : ''}" data-k="${k}">${v}</button>`).join('');
+  $('filter').onclick = e => { if (e.target.dataset.k) { state.filter = e.target.dataset.k; renderList(); } };
+  const sorts = [['value', '价值'], ['change', '涨跌']];
+  $('sort').innerHTML = sorts.map(([k, v]) => `<button class="${state.sort === k ? 'on' : ''}" data-k="${k}">${v}</button>`).join('');
+  $('sort').onclick = e => { if (e.target.dataset.k) { state.sort = e.target.dataset.k; store.set('sort', state.sort); renderList(); } };
+
+  let items = latest.items.filter(it => state.filter === 'all' || String(it.app) === state.filter);
+  items.sort(state.sort === 'change'
+    ? (a, b) => (b.change ?? -1e9) - (a.change ?? -1e9)
+    : (a, b) => (b.price || 0) * b.count - (a.price || 0) * a.count);
+  $('list').innerHTML = items.length ? items.map(it => {
+    const buy = buyOf(it.key);
+    const pl = buy && it.price != null ? (it.price - buy) / buy * 100 : null;
+    return `<div class="row" data-k="${esc(it.key)}">
+      <img class="ic" loading="lazy" src="${ICON(it.icon)}" alt="">
+      <div class="mid">
+        <div class="name"${nameStyle(it.color)}>${esc(it.name)}</div>
+        <div class="sub"><span class="tag">${APPS[it.app] || it.app}</span>${it.locked ? '<span class="tag">冷却中</span>' : ''}${money(it.price)} × ${it.count}${pl != null ? ` · 盈亏 <span class="${dir(pl)}">${pct(pl)}</span>` : ''}</div>
+      </div>
+      <div class="right num">
+        <div class="v">${money(it.price == null ? null : it.price * it.count)}</div>
+        <div class="c ${dir(it.change)}">${it.stale ? '价格未更新' : pct(it.change)}</div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="row" style="justify-content:center;color:var(--faint)">没有可交易的饰品</div>';
+  $('list').onclick = e => { const r = e.target.closest('.row'); if (r && r.dataset.k) openDetail(r.dataset.k); };
+  $('foot').textContent = `价格来自 Steam 社区市场最低售价 · 本次成功查价 ${latest.fresh}/${latest.items.length} · 买入价只保存在本机`;
+}
+
+function openDetail(key) {
+  const it = latest.items.find(x => x.key === key);
+  if (!it) return;
+  state.open = key;
+  const buy = buyOf(key);
+  const pl = buy && it.price != null ? (it.price - buy) * it.count : null;
+  $('sheet').innerHTML = `
+    <div class="grab"></div>
+    <div class="dhead">
+      <img src="${ICON(it.icon)}" alt="">
+      <div><div class="name"${nameStyle(it.color)}>${esc(it.name)}</div>
+      <div class="sub">${APPS[it.app] || it.app} · ${esc(it.type)}${it.locked ? ` · ${it.locked} 件冷却中` : ''}</div></div>
+    </div>
+    <div class="stats num">
+      <div class="stat"><div class="k">当前单价</div><div class="val">${money(it.price)}</div></div>
+      <div class="stat"><div class="k">24h 涨跌</div><div class="val ${dir(it.change)}">${pct(it.change)}</div></div>
+      <div class="stat"><div class="k">持有 ${it.count} 件 · 总价值</div><div class="val">${money(it.price == null ? null : it.price * it.count)}</div></div>
+      <div class="stat"><div class="k">浮动盈亏</div><div class="val ${dir(pl)}">${pl == null ? '填写买入价后显示' : (pl >= 0 ? '+' : '-') + money(Math.abs(pl))}</div></div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="tabs" id="dTabs" style="margin-top:0"></div>
+      <div class="chart" id="dChart"></div>
+    </div>
+    <div class="buy">
+      <input id="buyIn" type="number" inputmode="decimal" step="0.01" min="0" placeholder="买入单价（元），只存在本机" value="${buy ?? ''}">
+    </div>
+    <a class="btn" href="https://steamcommunity.com/market/listings/${it.app}/${encodeURIComponent(it.hash)}" target="_blank" rel="noopener">在 Steam 市场查看</a>
+    <button class="btn" id="closeBtn" style="color:var(--sub)">关闭</button>`;
+  document.body.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const drawChart = () => chart($('dChart'), history.items[key] || [], state.dRange);
+  const pick = k => { state.dRange = k; tabs($('dTabs'), k, pick); drawChart(); };
+  tabs($('dTabs'), state.dRange, pick);
+  requestAnimationFrame(drawChart);
+  $('buyIn').onchange = e => {
+    const v = parseFloat(e.target.value);
+    store.set('buy:' + key, isFinite(v) && v > 0 ? String(v) : null);
+    renderHero(); renderList(); openDetail(key);
+  };
+  $('closeBtn').onclick = closeDetail;
+}
+
+function closeDetail() {
+  state.open = null;
+  document.body.classList.remove('open');
+  document.body.style.overflow = '';
+}
+$('sheetBg').onclick = closeDetail;
+
+async function load() {
+  try {
+    const bust = '?t=' + Date.now();
+    const [l, h] = await Promise.all([
+      fetch('data/latest.json' + bust).then(r => r.json()),
+      fetch('data/history.json' + bust).then(r => r.json()).catch(() => ({total: [], items: {}})),
+    ]);
+    latest = l; history = h;
+    renderHero(); renderList();
+    if (state.open) openDetail(state.open);
+  } catch (e) {
+    $('total').textContent = '暂无数据';
+    $('foot').textContent = '云端还没跑过第一次，或网络无法访问（可开加速器再试）';
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+addEventListener('resize', () => { if (latest) { renderHero(); if (state.open) openDetail(state.open); } });
+load();
+</script>
+</body>
+</html>
