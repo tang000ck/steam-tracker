@@ -177,6 +177,31 @@ def skinport_prices(appid, currency):
     return table
 
 
+def skinport_history(appid, hash_name, currency):
+    """Skinport 的真实成交记录：近 24 小时 / 7 天 / 30 天 / 90 天的区间与笔数。"""
+    try:
+        r = session.get("https://api.skinport.com/v1/sales/history",
+                        params={"app_id": appid, "currency": currency,
+                                "market_hash_name": hash_name},
+                        headers={"Accept-Encoding": "br"}, timeout=40)
+        if r.status_code != 200:
+            print(f"  成交历史 HTTP {r.status_code}")
+            return None
+        rows = r.json()
+    except (requests.RequestException, ValueError) as e:
+        print(f"  成交历史失败: {e}")
+        return None
+    if not rows:
+        return None
+    row = rows[0]
+    out = {}
+    for span in ("last_24_hours", "last_7_days", "last_30_days", "last_90_days"):
+        d = row.get(span) or {}
+        if d.get("volume"):
+            out[span] = {k: d.get(k) for k in ("min", "max", "avg", "median", "volume")}
+    return out or None
+
+
 def steamdt_price(hash_name):
     """SteamDT 只有 CS2，但能拿到 Steam 官方市场价。"""
     key = os.environ.get("STEAMDT_KEY", "").strip()
@@ -268,6 +293,9 @@ def page_url(cfg):
 
 def main():
     cfg = load(ROOT / "config.json", {})
+    if os.environ.get("TEST_PUSH"):
+        push("测试推送", "能看到这条说明 Bark 通了 ✅", page_url(cfg))
+        return
     now = datetime.now(CST)
     ts = int(now.timestamp())
     latest = load(DATA / "latest.json", {"items": []})
@@ -305,6 +333,12 @@ def main():
         else:
             it["price"], it["volume"] = old.get("price"), old.get("volume")
             it["source"], it["stale"] = old.get("source"), True
+        # Skinport 成交历史变化慢，隔几小时取一次就够
+        it["hist"], it["hist_at"] = old.get("hist"), old.get("hist_at", 0)
+        if ts - it["hist_at"] >= cfg.get("history_hours", 6) * 3600:
+            got = skinport_history(it["app"], it["hash"], cfg.get("currency_code", "CNY"))
+            if got:
+                it["hist"], it["hist_at"] = got, ts
         it["change"] = change_pct(it["price"], value_ago(series, ts))
         print(f"  {it['name']} x{it['count']}: {it['price']} ({it['change']}%) "
               f"[{it['source'] or '无数据'}]{' 旧价' if it['stale'] else ''}")

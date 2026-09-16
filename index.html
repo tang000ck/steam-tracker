@@ -65,6 +65,10 @@ body{font:15px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft Ya
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .stat{background:var(--card);border-radius:12px;padding:10px 12px}
 .stat .k{font-size:12px;color:var(--sub)} .stat .val{font-size:17px;font-weight:600;margin-top:2px}
+table.hist{width:100%;border-collapse:collapse;font-size:13px}
+table.hist th{text-align:left;color:var(--sub);font-weight:500;padding:0 0 6px}
+table.hist th:not(:first-child),table.hist td:not(:first-child){text-align:right}
+table.hist td{padding:6px 0;border-top:1px solid var(--line)}
 .buy{display:flex;gap:8px;align-items:center;margin-top:10px}
 .buy input{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text)}
 .btn{display:block;text-align:center;border:0;border-radius:12px;padding:11px;font:inherit;font-size:15px;text-decoration:none;background:var(--card);color:var(--accent);margin-top:10px;width:100%}
@@ -231,6 +235,20 @@ function renderList() {
   $('foot').textContent = `价格来自 Steam 社区市场最低售价 · 本次成功查价 ${latest.fresh}/${latest.items.length} · 买入价只保存在本机`;
 }
 
+// Skinport 的真实成交记录，比挂单价更能说明行情；口径与 Steam 不同，单独列出
+function histTable(it) {
+  const SPANS = [['last_24_hours', '24 小时'], ['last_7_days', '7 天'], ['last_30_days', '30 天'], ['last_90_days', '90 天']];
+  const rows = SPANS.filter(([k]) => it.hist?.[k]).map(([k, label]) => {
+    const h = it.hist[k];
+    return `<tr><td>${label}</td><td class="num">${money(h.avg)}</td><td class="num">${money(h.min)} – ${money(h.max)}</td><td class="num">${h.volume}</td></tr>`;
+  });
+  if (!rows.length) return '<div class="card" style="margin-top:10px;color:var(--faint);font-size:13px">这件饰品在 Skinport 上没有成交记录</div>';
+  return `<div class="card" style="margin-top:10px">
+    <div class="sub" style="margin-bottom:8px">Skinport 成交记录（站外现金价，比 Steam 低，看区间和笔数）</div>
+    <table class="hist"><thead><tr><th>区间</th><th>均价</th><th>最低 – 最高</th><th>笔数</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+  </div>`;
+}
+
 function openDetail(key) {
   const it = latest.items.find(x => x.key === key);
   if (!it) return;
@@ -255,6 +273,7 @@ function openDetail(key) {
       <div class="tabs" id="dTabs" style="margin-top:0"></div>
       <div class="chart" id="dChart"></div>
     </div>
+    ${histTable(it)}
     <div class="buy">
       <input id="buyIn" type="number" inputmode="decimal" step="0.01" min="0" placeholder="买入单价（元），只存在本机" value="${buy ?? ''}">
     </div>

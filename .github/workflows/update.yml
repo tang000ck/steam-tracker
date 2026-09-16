@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "17 * * * *"   # 每小时第 17 分钟（避开整点高峰）
   workflow_dispatch:        # 允许在网页上手动触发
+    inputs:
+      test_push:
+        description: "只发一条测试推送，不查价"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -29,6 +34,7 @@ jobs:
         env:
           BARK_KEY: ${{ secrets.BARK_KEY }}
           STEAMDT_KEY: ${{ secrets.STEAMDT_KEY }}
+          TEST_PUSH: ${{ inputs.test_push && '1' || '' }}
 
       - name: 提交数据
         run: |
