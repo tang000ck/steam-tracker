@@ -9,7 +9,7 @@
   "currency_code": "CNY",
   "alert_pct": 10,
   "alert_cooldown_hours": 12,
-  "daily_hour": 21,
+  "report_hours": 6,
   "inventory_hours": 6,
   "request_interval": 2
 }

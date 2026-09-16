@@ -369,16 +369,18 @@ def main():
     if moves:
         push(f"饰品 24h 涨跌超过 {threshold}%", "\n".join(moves), link)
 
-    # 每日总价值日报
-    today = now.strftime("%Y-%m-%d")
-    if now.hour >= cfg.get("daily_hour", 21) and state.get("daily") != today and fresh:
-        state["daily"] = today
-        lines = [f"总价值 ¥{total:,.2f}" + (f"（24h {total_change:+.2f}%）" if total_change is not None else "")]
-        ranked = sorted((it for it in items if it["change"] is not None), key=lambda x: x["change"])
-        if ranked:
-            lines.append(f"涨幅最大：{ranked[-1]['name']} {ranked[-1]['change']:+.1f}%")
-            lines.append(f"跌幅最大：{ranked[0]['name']} {ranked[0]['change']:+.1f}%")
-        push("Steam 库存日报", "\n".join(lines), link)
+    # 定期行情汇总（默认每 6 小时一条）
+    every = cfg.get("report_hours", 6)
+    if fresh and ts - state.get("report_at", 0) >= every * 3600 - 600:
+        state["report_at"] = ts
+        span = change_pct(total, value_ago(history["total"], ts, hours=every))
+        title = f"库存 ¥{total:,.0f}" + (f"（{every}h {span:+.2f}%）" if span is not None else "")
+        lines = []
+        for it in sorted(items, key=lambda x: -(x["price"] or 0) * x["count"]):
+            c = change_pct(it["price"], value_ago(history["items"].get(it["key"], []), ts, hours=every))
+            mark = "" if c is None else f"  {c:+.1f}%"
+            lines.append(f"{it['name']} ×{it['count']}  ¥{it['price']:.2f}{mark}" if it["price"] else f"{it['name']} ×{it['count']}  无价格")
+        push(title, "\n".join(lines), link)
 
     save(DATA / "latest.json", latest)
     save(DATA / "history.json", history)

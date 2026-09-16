@@ -26,7 +26,7 @@ Skinport 是站外现金交易平台，不收 Steam 的 15% 手续费，**价格
 
 - `alert_pct`：单件饰品 24 小时涨跌超过这个百分比就推送，默认 10
 - `alert_cooldown_hours`：同一件饰品两次提醒的最短间隔（小时）
-- `daily_hour`：北京时间几点之后发当天的库存日报，默认 21
+- `report_hours`：每隔几小时推送一次行情汇总，默认 6
 - `currency`：23 表示人民币
 
 ## Bark 推送
