@@ -12,6 +12,16 @@
 | `.github/workflows/update.yml` | 每小时定时运行 |
 | `data/` | 自动生成的价格数据，不要手动改 |
 
+## 价格来源
+
+Steam 官方市场接口屏蔽机房 IP，云端查不了，所以按游戏分开取价（`config.json` 里的 `sources` 可调，靠前的优先）：
+
+- **CS2**：SteamDT（需要 `STEAMDT_KEY`，取其中的 Steam 平台价），失败时退回 Skinport
+- **Dota 2**：Skinport，免 key；取可立即交易的最低挂单价，没有挂单时用冷却中挂单的价格
+- **steam**：只有在本机运行时能用（家宽 IP 不被屏蔽）
+
+Skinport 是站外现金交易平台，不收 Steam 的 15% 手续费，**价格比 Steam 市场低，但涨跌趋势一致**。
+
 ## 设置项（config.json）
 
 - `alert_pct`：单件饰品 24 小时涨跌超过这个百分比就推送，默认 10

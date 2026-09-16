@@ -1,9 +1,15 @@
 {
   "steamid": "76561199188231289",
   "apps": [730, 570],
+  "sources": {
+    "730": ["steamdt", "skinport"],
+    "570": ["skinport"]
+  },
   "currency": 23,
+  "currency_code": "CNY",
   "alert_pct": 10,
   "alert_cooldown_hours": 12,
   "daily_hour": 21,
-  "request_interval": 4
+  "inventory_hours": 6,
+  "request_interval": 2
 }

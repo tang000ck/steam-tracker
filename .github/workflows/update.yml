@@ -23,11 +23,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install requests
+      - run: pip install requests brotli
 
       - run: python tracker.py
         env:
           BARK_KEY: ${{ secrets.BARK_KEY }}
+          STEAMDT_KEY: ${{ secrets.STEAMDT_KEY }}
 
       - name: 提交数据
         run: |

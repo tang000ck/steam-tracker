@@ -124,6 +124,74 @@ def fetch_price(appid, hash_name, currency):
     return price, volume
 
 
+SKINPORT_CACHE = {}
+
+
+def skinport_prices(appid, currency):
+    """Skinport 一次返回整个游戏的价格表，免 key，机房 IP 可用。"""
+    if appid in SKINPORT_CACHE:
+        return SKINPORT_CACHE[appid]
+    table = {}
+    # 先取交易冷却中的挂单（便宜一些），再用可立即交易的挂单覆盖，后者更接近 Steam 市场价
+    for params in ({"app_id": appid, "currency": currency, "tradable": 0},
+                   {"app_id": appid, "currency": currency}):
+        try:
+            r = session.get("https://api.skinport.com/v1/items", params=params,
+                            headers={"Accept-Encoding": "br"}, timeout=60)
+            if r.status_code != 200:
+                print(f"  Skinport HTTP {r.status_code}")
+                continue
+            for x in r.json():
+                price = x.get("min_price") or x.get("suggested_price")
+                if price:
+                    table[x["market_hash_name"]] = (float(price), int(x.get("quantity") or 0))
+        except (requests.RequestException, ValueError) as e:
+            print(f"  Skinport 失败: {e}")
+        time.sleep(2)
+    print(f"  Skinport[{appid}] 收录 {len(table)} 种饰品")
+    SKINPORT_CACHE[appid] = table
+    return table
+
+
+def steamdt_price(hash_name):
+    """SteamDT 只有 CS2，但能拿到 Steam 官方市场价。"""
+    key = os.environ.get("STEAMDT_KEY", "").strip()
+    if not key:
+        return None
+    try:
+        r = session.get("https://open.steamdt.com/open/cs2/v1/price/single",
+                        params={"marketHashName": hash_name},
+                        headers={"Authorization": f"Bearer {key}"}, timeout=30)
+        d = r.json()
+    except (requests.RequestException, ValueError) as e:
+        print(f"  SteamDT 失败: {e}")
+        return None
+    if not d.get("success"):
+        print(f"  SteamDT: {d.get('errorMsg') or str(d)[:200]}")
+        return None
+    rows = [x for x in (d.get("data") or []) if x.get("sellPrice")]
+    if not rows:
+        return None
+    steam = [x for x in rows if "STEAM" in str(x.get("platform", "")).upper()]
+    row = (steam or rows)[0]
+    return float(row["sellPrice"]), int(row.get("sellCount") or 0)
+
+
+def get_price(it, cfg):
+    """按配置的数据源依次尝试，返回 (价格, 在售数量, 来源)。"""
+    for src in cfg.get("sources", {}).get(str(it["app"]), ["skinport"]):
+        got = None
+        if src == "steamdt":
+            got = steamdt_price(it["hash"])
+        elif src == "skinport":
+            got = skinport_prices(it["app"], cfg.get("currency_code", "CNY")).get(it["hash"])
+        elif src == "steam":
+            got = fetch_price(it["app"], it["hash"], cfg["currency"])
+        if got:
+            return got[0], got[1], src
+    return None
+
+
 def value_ago(series, ts, hours=24):
     """取约 hours 小时前的值；数据不足或断档太久返回 None。"""
     target = ts - hours * 3600
@@ -199,19 +267,21 @@ def main():
     fresh = 0
     for i, it in enumerate(items):
         if i:
-            time.sleep(cfg.get("request_interval", 4))
-        p = fetch_price(it["app"], it["hash"], cfg["currency"])
+            time.sleep(cfg.get("request_interval", 2))
+        p = get_price(it, cfg)
         old = prev.get(it["key"], {})
         series = history["items"].setdefault(it["key"], [])
         if p:
             fresh += 1
-            it["price"], it["volume"], it["stale"] = p[0], p[1], False
+            it["price"], it["volume"], it["source"], it["stale"] = p[0], p[1], p[2], False
             series.append([ts, p[0]])
             del series[:-MAX_POINTS]
         else:
-            it["price"], it["volume"], it["stale"] = old.get("price"), old.get("volume"), True
+            it["price"], it["volume"] = old.get("price"), old.get("volume")
+            it["source"], it["stale"] = old.get("source"), True
         it["change"] = change_pct(it["price"], value_ago(series, ts))
-        print(f"  {it['name']} x{it['count']}: {it['price']} ({it['change']}%){' [旧价]' if it['stale'] else ''}")
+        print(f"  {it['name']} x{it['count']}: {it['price']} ({it['change']}%) "
+              f"[{it['source'] or '无数据'}]{' 旧价' if it['stale'] else ''}")
 
     total = round(sum((it["price"] or 0) * it["count"] for it in items), 2)
     if fresh:

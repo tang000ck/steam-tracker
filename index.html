@@ -95,6 +95,7 @@ body{font:15px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft Ya
 <script>
 const $ = id => document.getElementById(id);
 const APPS = {730: 'CS2', 570: 'Dota 2'};
+const SOURCES = {steam: 'Steam 市场', steamdt: 'SteamDT（Steam 价）', skinport: 'Skinport'};
 const RANGES = [['24H', 864e2], ['7D', 6048e2], ['30D', 2592e3], ['全部', Infinity]];
 const ICON = h => h ? `https://community.cloudflare.steamstatic.com/economy/image/${h}/192fx144f` : '';
 const store = {
@@ -247,6 +248,7 @@ function openDetail(key) {
       <div class="stat"><div class="k">当前单价</div><div class="val">${money(it.price)}</div></div>
       <div class="stat"><div class="k">24h 涨跌</div><div class="val ${dir(it.change)}">${pct(it.change)}</div></div>
       <div class="stat"><div class="k">持有 ${it.count} 件 · 总价值</div><div class="val">${money(it.price == null ? null : it.price * it.count)}</div></div>
+      <div class="stat"><div class="k">价格来源 · 在售</div><div class="val">${SOURCES[it.source] || '无数据'}${it.volume ? ` · ${it.volume}` : ''}</div></div>
       <div class="stat"><div class="k">浮动盈亏</div><div class="val ${dir(pl)}">${pl == null ? '填写买入价后显示' : (pl >= 0 ? '+' : '-') + money(Math.abs(pl))}</div></div>
     </div>
     <div class="card" style="margin-top:10px">
