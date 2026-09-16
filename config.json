@@ -2,8 +2,8 @@
   "steamid": "76561199188231289",
   "apps": [730, 570],
   "sources": {
-    "730": ["steamdt", "skinport"],
-    "570": ["skinport"]
+    "730": ["steam", "steamdt", "steam_proxy", "skinport"],
+    "570": ["steam", "steam_proxy", "skinport"]
   },
   "currency": 23,
   "currency_code": "CNY",

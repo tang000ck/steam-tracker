@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import time
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -112,16 +113,39 @@ def parse_price(s):
         return None
 
 
-def fetch_price(appid, hash_name, currency):
-    d = get_json("https://steamcommunity.com/market/priceoverview/",
-                 {"appid": appid, "currency": currency, "market_hash_name": hash_name})
+def read_overview(d):
+    """priceoverview 的返回：最低挂单价 + 24 小时成交量。"""
     if not d or not d.get("success"):
         return None
     price = parse_price(d.get("lowest_price")) or parse_price(d.get("median_price"))
     if price is None:
         return None
-    volume = int(re.sub(r"\D", "", d.get("volume", "")) or 0)
-    return price, volume
+    return price, int(re.sub(r"\D", "", d.get("volume", "")) or 0)
+
+
+def fetch_price(appid, hash_name, currency):
+    """直连 Steam，只有家宽 IP 能成功，云端会被 429，所以只试一次。"""
+    return read_overview(get_json("https://steamcommunity.com/market/priceoverview/",
+                                  {"appid": appid, "currency": currency,
+                                   "market_hash_name": hash_name}, tries=1))
+
+
+def steam_proxy_price(appid, hash_name, currency):
+    """Steam 屏蔽机房 IP，借公共网页中转服务转发，拿到的仍是官方价。"""
+    target = ("https://steamcommunity.com/market/priceoverview/"
+              f"?appid={appid}&currency={currency}"
+              f"&market_hash_name={urllib.parse.quote(hash_name)}")
+    for _ in range(2):
+        try:
+            r = session.get(os.environ.get("STEAM_PROXY", "https://r.jina.ai/") + target, timeout=60)
+            m = re.search(r'\{\s*"success".*?\}', r.text, re.S)
+            if m:
+                return read_overview(json.loads(m.group(0)))
+            print(f"  中转 HTTP {r.status_code}: {r.text[-120:].strip()}")
+        except (requests.RequestException, ValueError) as e:
+            print(f"  中转失败: {e}")
+        time.sleep(10)
+    return None
 
 
 SKINPORT_CACHE = {}
@@ -187,6 +211,8 @@ def get_price(it, cfg):
             got = skinport_prices(it["app"], cfg.get("currency_code", "CNY")).get(it["hash"])
         elif src == "steam":
             got = fetch_price(it["app"], it["hash"], cfg["currency"])
+        elif src == "steam_proxy":
+            got = steam_proxy_price(it["app"], it["hash"], cfg["currency"])
         if got:
             return got[0], got[1], src
     return None
