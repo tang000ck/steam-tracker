@@ -43,6 +43,40 @@ def fetch():
     return r.json()
 
 
+def fetch_air():
+    r = requests.get(
+        "https://air-quality-api.open-meteo.com/v1/air-quality",
+        params={
+            "latitude": LAT,
+            "longitude": LON,
+            "hourly": "uv_index,us_aqi,pm2_5",
+            "timezone": "Asia/Shanghai",
+            "forecast_days": 1,
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    return r.json()
+
+
+def uv_advice(uv):
+    if uv >= 8:
+        return f"紫外线 {uv:.0f}（很强），防晒霜+遮阳伞安排上"
+    if uv >= 6:
+        return f"紫外线 {uv:.0f}（强），记得防晒"
+    if uv >= 3:
+        return f"紫外线 {uv:.0f}（中等），出门涂点防晒"
+    return f"紫外线 {uv:.0f}（弱），不用特意防晒"
+
+
+def aqi_advice(aqi):
+    if aqi > 150:
+        return f"AQI {aqi:.0f}（不健康），出门戴口罩"
+    if aqi > 100:
+        return f"AQI {aqi:.0f}（敏感人群不健康），敏感体质戴个口罩"
+    return f"AQI {aqi:.0f}（空气还行），不用戴口罩"
+
+
 def push(title, body):
     raw = os.environ.get("BARK_KEY", "").strip()
     if NO_PUSH or not raw:
@@ -62,6 +96,11 @@ def main():
     times = [datetime.fromisoformat(t) for t in hourly["time"]]
     now = datetime.now(CST).replace(tzinfo=None)
     idx = min(range(len(times)), key=lambda i: abs((times[i] - now).total_seconds()))
+
+    air = fetch_air()
+    air_hourly = air["hourly"]
+    air_times = [datetime.fromisoformat(t) for t in air_hourly["time"]]
+    air_idx = min(range(len(air_times)), key=lambda i: abs((air_times[i] - now).total_seconds()))
 
     temp_now = hourly["temperature_2m"][idx]
     code_now = hourly["weathercode"][idx]
@@ -85,6 +124,12 @@ def main():
             lines.append("今天不太会下雨")
         if tmax - tmin >= 8:
             lines.append("早晚温差大，外套带上")
+
+        air_end = next((i for i in range(air_idx, len(air_times)) if air_times[i].hour == 19), len(air_times) - 1)
+        uv_peak = max(air_hourly["uv_index"][air_idx:air_end + 1], default=0)
+        aqi_now = air_hourly["us_aqi"][air_idx]
+        lines.append(uv_advice(uv_peak))
+        lines.append(aqi_advice(aqi_now))
     else:
         # 下午：看接下来6小时的最大降水概率
         end = min(idx + 6, len(times) - 1)
@@ -98,6 +143,9 @@ def main():
             lines.append("🌂 可能下雨，带把伞保险")
         else:
             lines.append("暂时不用担心下雨")
+
+        lines.append(uv_advice(air_hourly["uv_index"][air_idx]))
+        lines.append(aqi_advice(air_hourly["us_aqi"][air_idx]))
 
     push(title, "\n".join(lines))
 
