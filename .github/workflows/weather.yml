@@ -1,0 +1,24 @@
+name: 天气推送
+
+on:
+  schedule:
+    - cron: "30 23 * * *"  # 07:30 北京时间
+    - cron: "45 5 * * *"   # 13:45 北京时间
+  workflow_dispatch:
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - run: python weather.py
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
